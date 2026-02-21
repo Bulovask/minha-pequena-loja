@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sessaoModel } from "@/model/Sessao";
+import { usuarioModel } from "@/model/Usuario";
 import dbConnect from "@/lib/mongoose";
 
 export async function POST(req: NextRequest) {
