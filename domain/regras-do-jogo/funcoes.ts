@@ -1,11 +1,7 @@
-import { addDays } from "date-fns"
-import { EstadoAtual } from "./interfaces";
-
+import { addDays, addMonths, isBefore, setDate } from "date-fns"
 import { _avancarDias, _pagarDespesas, _vender } from "./funcoes-auxiliares"
 
-export function proximoTurno(estadoAtual: EstadoAtual, dias: number) {
-  estadoAtual.mensagensRecentes = [];
-
+export function proximoTurno(estadoAtual: Sessao, dias: number) {
   const diasRestantes = _vender(estadoAtual, dias);
 
   for (let i = 0; i < dias - diasRestantes; i++) {
@@ -14,4 +10,8 @@ export function proximoTurno(estadoAtual: EstadoAtual, dias: number) {
   }
 
   _avancarDias(estadoAtual, dias - diasRestantes);
+}
+
+export function pagarUltimaParcela(estadoAtual: Sessao) {
+
 }

@@ -1,51 +1,93 @@
 import { addDays, format } from "date-fns"
-import { EstadoAtual } from "./interfaces";
-import { mensagens } from "./mensagens";
+import { Sessao } from "@/model/Sessao";
+import { Parcela } from "@/subschemas/Parcela";
+import { Emprestimo } from "@/subschemas/Emprestimo";
 
-export function _pagarDespesas(estadoAtual: EstadoAtual, dataDePagamento: Date) {
-  const { loja, mensagensRecentes: msgs } = estadoAtual;
+
+export function _pagarParcelaDoEmprestimo(sessao: Sessao, emprestimo: Emprestimo, dataDePagamento: Date): boolean {
+  const parcelaPendente = emprestimo.parcelas.find(p => !p.pagamento?.dataPagamento);
+
+  if (!parcelaPendente) return false;
+
+  if (parcelaPendente.dataVencimento > dataDePagamento) {
+    return false;
+  }
+
+  const valorBase = emprestimo.contrato.valorDaParcela;
+  let valorFinalACobrar = valorBase;
+
+  if (dataDePagamento > parcelaPendente.dataVencimento) {
+    const milissegundosPorDia = 1000 * 60 * 60 * 24;
+    const diferencaTempo = dataDePagamento.getTime() - parcelaPendente.dataVencimento.getTime();
+    const diasDeAtraso = Math.ceil(diferencaTempo / milissegundosPorDia);
+
+    if (diasDeAtraso > 0) {
+      const multaFixa = valorBase * 0.02;
+      const jurosDiarios = valorBase * (0.005 * diasDeAtraso);
+      valorFinalACobrar = valorBase + multaFixa + jurosDiarios;
+    }
+  }
+
+  if (sessao.loja.caixaAtual < valorFinalACobrar) {
+    emprestimo.status = 'ATRASADO';
+    return false;
+  }
+
+  valorFinalACobrar = Math.round(valorFinalACobrar * 100) / 100;
+  sessao.loja.caixaAtual -= valorFinalACobrar;
+
+  parcelaPendente.pagamento = {
+    dataPagamento: dataDePagamento,
+    valorPago: valorFinalACobrar
+  };
+
+  const todasPagas = emprestimo.parcelas.every(p => p.pagamento?.dataPagamento);
+  emprestimo.status = todasPagas ? 'QUITADO' : 'ATIVO';
+
+  return true;
+}
+
+
+
+export function _pagarDespesas(sessao: Sessao, dataDePagamento: Date) {
+  const { loja } = sessao;
   const { contas } = loja;
 
-  loja.caixaAtual -= (contas.agua + contas.energia + contas.internet);
-  msgs.push({ id: mensagens.contasPagas.id, args: { data: format(dataDePagamento, "dd/MM/yyy") } });
+  if (contas && contas.agua && contas.energia && contas.internet)
+    loja.caixaAtual -= (contas.agua + contas.energia + contas.internet);
 
-  loja.funcionarios.forEach(funcionario => { loja.caixaAtual -= funcionario.salario });
-  if (loja.funcionarios.length > 0)
-    msgs.push({ id: mensagens.salariosPagos.id, args: {} });
+  loja.funcionarios.forEach(funcionario => loja.caixaAtual -= funcionario.salario);
 
-  loja.emprestimos.forEach(emprestimo => {
-    if (emprestimo.numeroDeParcelas > 0) {
-      emprestimo.numeroDeParcelas--;
-      emprestimo.valor -= emprestimo.valorParcela;
-      loja.caixaAtual -= emprestimo.valorParcela;
+  loja.emprestimos.forEach(emprestimoDoc => {
+    const emprestimo = emprestimoDoc as unknown as Emprestimo;
 
-      const dataDeContratacao = format(emprestimo.dataDeContratacao, "dd/MM/yyy");
-      const zerou = emprestimo.numeroDeParcelas <= 0;
-      if (zerou) msgs.push({ id: mensagens.emprestimoPago.id, args: { data: dataDeContratacao } });
-      else msgs.push({ id: mensagens.parcelaDoEmprestimoPaga.id, args: { data: dataDeContratacao } });
+    if (emprestimo.status !== 'QUITADO') {
+      let pagou = _pagarParcelaDoEmprestimo(sessao, emprestimo, dataDePagamento);
+
+      while (pagou && (emprestimo.status as string) !== 'QUITADO') {
+        pagou = _pagarParcelaDoEmprestimo(sessao, emprestimo, dataDePagamento);
+      }
+
     }
   });
 }
-
-export function _vender(estadoAtual: EstadoAtual, dias: number) {
-  const { loja, mensagensRecentes: msgs } = estadoAtual;
+export function _vender(sessao: Sessao, dias: number) {
+  const { loja } = sessao;
   const forcaDeVendaEquipe = loja.funcionarios.reduce((acc, f) => acc + f.habilidade, 0);
-  
+
   const regrasPorProduto = loja.estoque.map(p => {
     const mapa: number[] = [];
-    p.funcaoDeVenda.regras.forEach(r => mapa[r.mes] = r.multiplicador);
+    p.regrasDeVenda.regras.forEach(r => mapa[r.mes] = r.multiplicador);
     return mapa;
   });
 
   for (let i = 0; i < dias; i++) {
-    const dataSimulada = addDays(estadoAtual.data, i);
+    const dataSimulada = addDays(sessao.data, i);
     const mesAtual = dataSimulada.getMonth();
 
     const algumProdutoAcabou = loja.estoque.some(p => p.estoque <= 0 && p.pararSeAcabar);
     const estoqueAcabou = loja.estoque.every(p => p.estoque <= 0);
 
-    if (algumProdutoAcabou) msgs.push({ id: mensagens.estoqueZerado.id, args: {} });
-    if (estoqueAcabou) msgs.push({ id: mensagens.todosProdutosEsgotados.id, args: {} });
     if (algumProdutoAcabou || estoqueAcabou) return dias - i;
 
     for (let j = 0; j < loja.estoque.length; j++) {
@@ -58,11 +100,11 @@ export function _vender(estadoAtual: EstadoAtual, dias: number) {
       let fatorPreco = Math.pow(precoSugerido / precoJogador, 2);
       if (fatorPreco > 3) fatorPreco = 3;
 
-      const multiplicadorBase = regrasPorProduto[j][mesAtual] || produto.funcaoDeVenda.multiplicador;
+      const multiplicadorBase = regrasPorProduto[j][mesAtual] || produto.regrasDeVenda.multiplicador;
       const multiplicadorFinal = multiplicadorBase * fatorPreco;
 
       const variacao = Math.random() + 0.7;
-      const potencialVenda = Math.round(multiplicadorFinal * forcaDeVendaEquipe * variacao * 15);
+      const potencialVenda = (multiplicadorFinal * forcaDeVendaEquipe * variacao * 15) | 0;
 
       const vendaEfetiva = Math.min(potencialVenda, produto.estoque);
 
@@ -73,21 +115,6 @@ export function _vender(estadoAtual: EstadoAtual, dias: number) {
   return 0;
 }
 
-export function _avancarDias(estadoAtual: EstadoAtual, dias: number) {
-  estadoAtual.data = addDays(estadoAtual.data, dias)
-}
-
-export function _calcularEmprestimo(estadoAtual: EstadoAtual, valor: number, numeroDeParcelas: number) {
-  const jurosMensal = 0.0183; // 1.83% ao mês
-  const valorComJuros = valor * Math.pow((1 + jurosMensal), numeroDeParcelas);
-  const valorParcela = valorComJuros / numeroDeParcelas;
-
-  estadoAtual.loja.emprestimos.push({
-    id: (Math.random() * 1000000).toFixed(0),
-    valor: valorComJuros,
-    jurosMensal,
-    valorParcela,
-    numeroDeParcelas,
-    dataDeContratacao: estadoAtual.data
-  });
+export function _avancarDias(sessao: Sessao, dias: number) {
+  sessao.data = addDays(sessao.data, dias)
 }
