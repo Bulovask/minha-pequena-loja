@@ -1,9 +1,10 @@
 import { Sessao } from "@/model/Sessao";
 import { Emprestimo } from "@/subschemas/Emprestimo";
 import { isAfter, differenceInCalendarDays } from "date-fns";
+import { notificar } from "@/functions/notificacoes/notificar";
 
 
-export function pagarParcelaDoEmprestimo(sessao: Sessao, emprestimo: Emprestimo, dataDePagamento: Date): boolean {
+export function pagarProximaParcelaDoEmprestimo(sessao: Sessao, emprestimo: Emprestimo, dataDePagamento: Date): boolean {
   const parcelaPendente = emprestimo.parcelas.find(p => !p.pagamento?.dataPagamento);
 
   if (!parcelaPendente) return false;
@@ -30,6 +31,7 @@ export function pagarParcelaDoEmprestimo(sessao: Sessao, emprestimo: Emprestimo,
 
   if (sessao.loja.caixaAtual < valorFinalACobrar) {
     emprestimo.status = 'ATRASADO';
+    notificar(sessao, "Bulobanco", `Saldo insuficiente: Não foi possível pagar a parcela ${parcelaPendente.numero}!`)
     return false;
   }
 
@@ -43,6 +45,9 @@ export function pagarParcelaDoEmprestimo(sessao: Sessao, emprestimo: Emprestimo,
 
   const todasPagas = emprestimo.parcelas.every(p => p.pagamento?.dataPagamento);
   emprestimo.status = todasPagas ? 'QUITADO' : 'ATIVO';
+
+  if (todasPagas) notificar(sessao, "Bulobanco", "Empréstimo quitado!");
+  else notificar(sessao, "Bulobanco", "Empréstimo: Parcela paga com sucesso!");
 
   return true;
 }

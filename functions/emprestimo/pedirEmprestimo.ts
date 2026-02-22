@@ -1,6 +1,7 @@
 import { addMonths, isBefore, setDate } from "date-fns";
 import { Emprestimo } from "@/subschemas/Emprestimo";
 import { Sessao } from "@/model/Sessao";
+import { notificar } from "../notificacoes/notificar";
 
 export function pedirEmprestimo(sessao: Sessao, valor: number, juros: number, parcelas: number) {
   const P = valor;
@@ -38,6 +39,8 @@ export function pedirEmprestimo(sessao: Sessao, valor: number, juros: number, pa
 
   sessao.loja.emprestimos.push(emprestimo as Emprestimo);
   sessao.loja.caixaAtual += valor;
+
+  notificar(sessao, "Bulobanco", `Empréstimo efetuado com sucesso o valor de R$ ${valor.toFixed(2)} já está disponível em sua conta.`);
 
   return emprestimo;
 }
