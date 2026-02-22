@@ -4,9 +4,9 @@ import { LojaSchema } from "@/subschemas/Loja";
 
 const SessaoSchema = new Schema({
   ativo: { type: Boolean, required: true, default: true },
+  data: { type: Date, required: true },
   usuario: { type: Schema.Types.ObjectId, ref: "Usuario", required: true },
-  loja: { type: LojaSchema, required: true },
-  data: { type: Date, required: true }
+  loja: { type: LojaSchema, required: true }
 }, {minimize: false});
 
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
-import { proximoTurno } from "@/domain/regras-do-jogo/funcoes";
+import { proximoTurno } from "@/functions/sessao/proximoTurno";
 import { sessaoModel } from "@/model/Sessao";
 
 export async function POST(req: NextRequest) {

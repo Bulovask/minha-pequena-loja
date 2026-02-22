@@ -6,11 +6,11 @@ export async function POST(req: NextRequest) {
   try {
     await dbConnect();
     const body = await req.json();
-    const { id } = body;
+    const { usuarioId } = body;
 
-    if (!id) throw new Error("O ID do usuário é obrigatório.");
+    if (!usuarioId) throw new Error("O ID do usuário é obrigatório.");
 
-    const usuario = await usuarioModel.findById(id);
+    const usuario = await usuarioModel.findById(usuarioId);
 
     if (!usuario) throw new Error("Usuário não encontrado.");
 

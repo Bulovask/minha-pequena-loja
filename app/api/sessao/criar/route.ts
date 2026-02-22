@@ -12,8 +12,7 @@ export async function POST(req: NextRequest) {
 
     if (!usuarioId) throw new Error("O campo 'usuarioId' é obrigatório para criar uma sessão.");
 
-    const usuarioExiste = await usuarioModel.findById(usuarioId);
-
+    const usuarioExiste = await usuarioModel.findOne({_id: usuarioId, ativo: true});
     if (!usuarioExiste) throw new Error("Usuário não encontrado. Não é possível criar uma sessão para um ID inexistente.");
 
     const novaSessao = new sessaoModel({
@@ -21,11 +20,11 @@ export async function POST(req: NextRequest) {
       data: new Date(1990, 11, 1),
       loja: {
         nome: "Loja Nova",
-        caixaAtual: 10000,
+        caixaAtual: 0,
         contas: {
-          energia: 30,
-          agua: 30,
-          internet: 30
+          energia: 0,
+          agua: 0,
+          internet: 0
         },
         funcionarios: [
           {

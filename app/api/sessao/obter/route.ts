@@ -6,6 +6,8 @@ import dbConnect from "@/lib/mongoose";
 export async function POST(req: NextRequest) {
   try {
     await dbConnect();
+    await usuarioModel.init();
+
     const body = await req.json();
     const { sessaoId } = body;
 
