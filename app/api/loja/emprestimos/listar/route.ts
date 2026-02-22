@@ -49,7 +49,7 @@ export async function GET(
   } catch (error) {
     return NextResponse.json({
       success: false,
-      error: "Erro ao listar empréstimos."
+      error: error instanceof Error ? error.message : "Erro ao listar empréstimos."
     }, { status: 500 });
   }
 }

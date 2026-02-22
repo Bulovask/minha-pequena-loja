@@ -1,6 +1,6 @@
 import { Sessao } from "@/model/Sessao";
 import { Emprestimo } from "@/subschemas/Emprestimo";
-import { pagarParcelaDoEmprestimo } from "../emprestimo/pagarProximaParcelaDoEmprestimo";
+import { pagarProximaParcelaDoEmprestimo } from "../emprestimo/pagarProximaParcelaDoEmprestimo";
 import { notificar } from "../notificacoes/notificar";
 
 export function pagarDespesas(sessao: Sessao, dataDePagamento: Date) {
@@ -29,10 +29,10 @@ export function pagarDespesas(sessao: Sessao, dataDePagamento: Date) {
     const emprestimo = emprestimoDoc as unknown as Emprestimo;
 
     if (emprestimo.status !== 'QUITADO') {
-      let pagou = pagarParcelaDoEmprestimo(sessao, emprestimo, dataDePagamento);
+      let pagou = pagarProximaParcelaDoEmprestimo(sessao, emprestimo, dataDePagamento);
 
       while (pagou && (emprestimo.status as string) !== 'QUITADO') {
-        pagou = pagarParcelaDoEmprestimo(sessao, emprestimo, dataDePagamento);
+        pagou = pagarProximaParcelaDoEmprestimo(sessao, emprestimo, dataDePagamento);
       }
     }
   });

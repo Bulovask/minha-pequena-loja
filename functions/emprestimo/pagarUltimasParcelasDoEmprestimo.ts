@@ -1,14 +1,14 @@
 import { Sessao } from "@/model/Sessao";
 import { Emprestimo } from "@/subschemas/Emprestimo";
 import { notificar } from "@/functions/notificacoes/notificar";
-import { differenceInCalendarDays } from "date-fns";
+import { calcularValorParcela } from "@/functions/emprestimo/simular/calcularValorParcela";
 
 export function pagarUltimasParcelasDoEmprestimo(
   sessao: Sessao,
   emprestimo: Emprestimo,
   quantidade: number
 ): boolean {
-  // 1. Filtra parcelas não pagas e ordena do FINAL para o INÍCIO (ex: 12, 11, 10...)
+  // 1. Filtra do FINAL para o INÍCIO
   const pendentes = emprestimo.parcelas
     .filter(p => !p.pagamento?.dataPagamento)
     .sort((a, b) => b.numero - a.numero);
@@ -19,54 +19,45 @@ export function pagarUltimasParcelasDoEmprestimo(
   let totalProcessado = 0;
   let economiaTotal = 0;
 
-
   for (const parcela of parcelasParaAmortizar) {
-  // 1. Definição das bases para o cálculo
-  const valorBase = emprestimo.contrato.valorDaParcela;
-  const taxaMensal = emprestimo.contrato.taxaJuros; 
-  const dataVencimento = parcela.dataVencimento;
-  const hoje = sessao.data;
+    // 2. Reaproveita o mesmo motor de cálculo
+    const info = calcularValorParcela(
+      emprestimo.contrato.valorDaParcela,
+      emprestimo.contrato.taxaJuros,
+      parcela.dataVencimento,
+      sessao.data
+    );
 
-  // 2. Cálculo do tempo e do desconto dinâmico (Valor Presente)
-  const diasDeAntecipacao = differenceInCalendarDays(dataVencimento, hoje);
-  const mesesDeAntecipacao = diasDeAntecipacao / 30;
+    // 3. Verificação de saldo (Empréstimo nunca deixa o saldo negativo)
+    if (sessao.loja.caixaAtual < info.valorFinal) {
+      notificar(sessao, "Bulobanco", `Saldo insuficiente para amortizar a parcela ${parcela.numero}.`);
+      break;
+    }
 
-  // Fórmula: VP = VF / (1 + (i * t))
-  // Isso remove exatamente os juros que ainda iriam decorrer
-  const valorPresente = valorBase / (1 + (taxaMensal * mesesDeAntecipacao));
+    // 4. Efetivação
+    sessao.loja.caixaAtual -= info.valorFinal;
+    economiaTotal += info.desconto;
+    
+    parcela.pagamento = {
+      dataPagamento: sessao.data,
+      valorPago: info.valorFinal
+    };
 
-  const valorComDesconto = Math.round(valorPresente * 100) / 100;
-  const economiaNestaParcela = valorBase - valorComDesconto;
-
-  // 3. Verificação de saldo
-  if (sessao.loja.caixaAtual < valorComDesconto) {
-    notificar(sessao, "Bulobanco", `Saldo insuficiente para amortizar a parcela ${parcela.numero}.`);
-    break;
+    totalProcessado++;
   }
 
-  // 4. Efetivação do pagamento
-  sessao.loja.caixaAtual -= valorComDesconto;
-  economiaTotal += economiaNestaParcela; // Agora usa a economia real calculada
-
-  parcela.pagamento = {
-    dataPagamento: hoje,
-    valorPago: valorComDesconto
-  };
-
-  totalProcessado++;
-}
-
-
-  // Atualização de Status
-  const todasPagas = emprestimo.parcelas.every(p => p.pagamento?.dataPagamento);
-  emprestimo.status = todasPagas ? 'QUITADO' : 'ATIVO';
-
+  // 5. Atualiza status e notifica (reaproveitando a lógica de mensagens)
   if (totalProcessado > 0) {
+    const todasPagas = emprestimo.parcelas.every(p => p.pagamento?.dataPagamento);
+    emprestimo.status = todasPagas ? 'QUITADO' : 'ATIVO';
+
     notificar(
       sessao,
       "Bulobanco",
-      `Amortização: ${totalProcessado} parcelas finais pagas. Você economizou R$ ${economiaTotal.toFixed(2)} em juros!`
+      `Amortização: ${totalProcessado} parcelas finais pagas. Economia de R$ ${economiaTotal.toFixed(2)}!`
     );
+    
+    if (todasPagas) notificar(sessao, "Bulobanco", "Empréstimo quitado com sucesso!");
   }
 
   return totalProcessado > 0;
