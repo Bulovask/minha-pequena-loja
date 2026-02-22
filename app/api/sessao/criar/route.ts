@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
         },
         funcionarios: [
           {
+            _id: new Types.ObjectId(), // Gerado automaticamente
             nome: '{{usuario.nome}}',
             habilidade: 10,
             salario: 0,

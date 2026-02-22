@@ -1,6 +1,6 @@
 import { Schema, InferSchemaType } from 'mongoose';
 import { EmprestimoSchema } from "@/subschemas/Emprestimo";
-import { FuncionarioSchema } from './Funcionario';
+import { FuncionarioSchema } from '../model/Funcionario';
 import { ProdutoSchema } from './Produto';
 import { ReciboDeCompraSchema } from './ReciboDeCompra';
 
