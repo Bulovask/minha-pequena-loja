@@ -18,7 +18,7 @@ export function vender(sessao: Sessao, dias: number) {
     const algumProdutoAcabou = loja.estoque.some(p => p.estoque <= 0 && p.pararSeAcabar);
     const estoqueAcabou = loja.estoque.every(p => p.estoque <= 0);
 
-    // if (algumProdutoAcabou || estoqueAcabou) return dias - i;
+    if (algumProdutoAcabou || estoqueAcabou) return dias - i;
 
     for (let j = 0; j < loja.estoque.length; j++) {
       const produto = loja.estoque[j];

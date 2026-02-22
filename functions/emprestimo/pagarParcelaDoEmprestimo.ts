@@ -1,5 +1,6 @@
 import { Sessao } from "@/model/Sessao";
 import { Emprestimo } from "@/subschemas/Emprestimo";
+import { isAfter, differenceInCalendarDays } from "date-fns";
 
 
 export function pagarParcelaDoEmprestimo(sessao: Sessao, emprestimo: Emprestimo, dataDePagamento: Date): boolean {
@@ -7,23 +8,24 @@ export function pagarParcelaDoEmprestimo(sessao: Sessao, emprestimo: Emprestimo,
 
   if (!parcelaPendente) return false;
 
-  if (parcelaPendente.dataVencimento > dataDePagamento) {
+  if (isAfter(parcelaPendente.dataVencimento, dataDePagamento)) {
     return false;
   }
 
   const valorBase = emprestimo.contrato.valorDaParcela;
   let valorFinalACobrar = valorBase;
 
-  if (dataDePagamento > parcelaPendente.dataVencimento) {
-    const milissegundosPorDia = 1000 * 60 * 60 * 24;
-    const diferencaTempo = dataDePagamento.getTime() - parcelaPendente.dataVencimento.getTime();
-    const diasDeAtraso = Math.ceil(diferencaTempo / milissegundosPorDia);
+  const diasDeAtraso = differenceInCalendarDays(dataDePagamento, parcelaPendente.dataVencimento);
 
-    if (diasDeAtraso > 0) {
-      const multaFixa = valorBase * 0.02;
-      const jurosDiarios = valorBase * (0.005 * diasDeAtraso);
-      valorFinalACobrar = valorBase + multaFixa + jurosDiarios;
-    }
+  if (diasDeAtraso > 0) {
+    const multaFixa = valorBase * 0.02;
+    const jurosDiarios = valorBase * (0.005 * diasDeAtraso);
+
+    let encargos = multaFixa + jurosDiarios;
+    const tetoEncargos = valorBase * 0.50;
+    if (encargos > tetoEncargos) encargos = tetoEncargos;
+
+    valorFinalACobrar = valorBase + encargos;
   }
 
   if (sessao.loja.caixaAtual < valorFinalACobrar) {
