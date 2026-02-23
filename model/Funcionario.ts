@@ -2,7 +2,7 @@ import { Schema, InferSchemaType, model, models } from 'mongoose';
 
 
 export const FuncionarioSchema = new Schema({
-  _id: { type: Schema.Types.ObjectId, auto: true, unique: true },
+  _id: { type: Schema.Types.ObjectId, required: true },
   nome: { type: String, required: true },
   habilidade: { type: Number, required: true },
   salario: { type: Number, required: true },
@@ -11,4 +11,4 @@ export const FuncionarioSchema = new Schema({
 
 
 export type Funcionario = InferSchemaType<typeof FuncionarioSchema>;
-export const FuncionarioModel = models.Funcionario || model<Funcionario>('Funcionario', FuncionarioSchema, "funcionarioss");
+export const FuncionarioModel = models.Funcionario || model<Funcionario>('Funcionario', FuncionarioSchema, "funcionarios");

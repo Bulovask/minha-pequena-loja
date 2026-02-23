@@ -2,6 +2,7 @@ import { addMonths, isBefore, setDate } from "date-fns";
 import { Emprestimo } from "@/subschemas/Emprestimo";
 import { Sessao } from "@/model/Sessao";
 import { notificar } from "../notificacoes/notificar";
+import { Types } from "mongoose";
 
 export function pedirEmprestimo(sessao: Sessao, valor: number, juros: number, parcelas: number) {
   const P = valor;
@@ -13,6 +14,7 @@ export function pedirEmprestimo(sessao: Sessao, valor: number, juros: number, pa
 
   const emprestimo: unknown = {
     contrato: {
+      _id: new Types.ObjectId(),
       dataContratacao: new Date(sessao.data),
       valorEmprestado: valor,
       taxaJuros: juros,

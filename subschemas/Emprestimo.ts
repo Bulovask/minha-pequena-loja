@@ -5,7 +5,7 @@ import { ParcelaSchema } from './Parcela';
 export const EmprestimoSchema = new Schema({
   contrato: {
     type: {
-      _id: { type: Schema.Types.ObjectId, auto: true, unique: true },
+      _id: { type: Schema.Types.ObjectId, required: true },
       dataContratacao: { type: Date, default: Date.now },
       valorEmprestado: { type: Number, required: true },
       taxaJuros: { type: Number, required: true },

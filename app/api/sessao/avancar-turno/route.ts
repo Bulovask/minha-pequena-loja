@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import { proximoTurno } from "@/functions/sessao/proximoTurno";
 import { sessaoModel } from "@/model/Sessao";
+import { usuarioModel } from "@/model/Usuario";
 
 export async function POST(req: NextRequest) {
   try {
     await dbConnect();
+    await usuarioModel.init();
 
     const body = await req.json();
     const { sessaoId, dias } = body;
@@ -20,7 +22,7 @@ export async function POST(req: NextRequest) {
 
     if (!sessao) throw new Error("Sessão não encontrada ou foi desativada.");
 
-    proximoTurno(sessao, dias);
+    await proximoTurno(sessao, dias);
 
     const sessaoSalva = await sessao.save();
 

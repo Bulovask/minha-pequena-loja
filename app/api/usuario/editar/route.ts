@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { usuarioModel } from "@/model/Usuario";
 import dbConnect from "@/lib/mongoose";
 
-export async function POST(req: NextRequest) {
+export async function PATCH(req: NextRequest) {
   try {
     await dbConnect();
     const body = await req.json();
